@@ -105,6 +105,7 @@ class PayloadTests(unittest.TestCase):
                 specs=["tests/example.txt"],
                 gpu="B200",
                 gpu_type="b200",
+                arch="sm_100a",
                 image="cuda-nvcc",
                 timeout_s=600,
                 verbose=True,
@@ -122,10 +123,13 @@ class PayloadTests(unittest.TestCase):
                 "--file",
                 "__submitted__.cu",
                 "-v",
+                "--arch",
+                "sm_100a",
                 "test",
                 "tests/example.txt",
             ],
         )
+        self.assertEqual(payload["remote"]["arch"], "sm_100a")
 
 
 if __name__ == "__main__":

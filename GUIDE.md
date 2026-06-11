@@ -1,10 +1,11 @@
-# gpu_func_cli — Guide
+# gpu_func_cli Guide
 
 Run CUDA **course exercises** and **custom kernels** on a remote GPU through the
 GFAAS REST API. Your local machine needs no CUDA, `nvcc`, Nsight Compute, or
-GPU — the CLI ships a self-contained job to a GFAAS worker, and the worker does
+GPU. The CLI sends a self-contained job to a GFAAS worker, and the worker does
 the CUDA work. (Local `.ncu-rep` parsing with `report summary` / `report
-feedback` additionally needs Nsight Compute's `ncu_report.py` — still no GPU.)
+feedback` additionally needs Nsight Compute's `ncu_report.py`; no GPU is needed
+for parsing.)
 
 ## Contents
 
@@ -21,9 +22,9 @@ feedback` additionally needs Nsight Compute's `ncu_report.py` — still no GPU.)
 11. [Exit codes](#11-exit-codes)
 12. [Troubleshooting](#12-troubleshooting)
 
-**New here?** Read 1–4 top to bottom. **Already have a `.cu`?** Jump to
+Recommended path: read Sections 1-4 first. If you already have a `.cu`, jump to
 [5 (exercises)](#5-course-exercises) or [6 (custom)](#6-custom-kernels).
-**Need a flag?** [Section 9](#9-command-reference).
+For flags, see [Section 9](#9-command-reference).
 
 ---
 
@@ -38,7 +39,7 @@ uv tool install --editable /path/to/gpu_func_cli
 gpu_func_cli --help
 ```
 
-The remote-run client uses Python standard-library modules only — no GFAAS SDK,
+The remote-run client uses Python standard-library modules only; no GFAAS SDK,
 fast-containers, CUDA, Nsight Compute, or the cuda-course Python package.
 
 ## 2. Configure GFAAS
@@ -52,34 +53,56 @@ gpu_func_cli workers      # expect a worker advertising gpu_type b200, image cud
 Defaults: `--gpu B200`, `--gpu-type b200`, `--image cuda-nvcc`, `--arch sm_100a`.
 If `gpu_func_cli workers` lists a B200 / `cuda-nvcc` worker, you are ready.
 
+Examples that use files from a cuda-course checkout set `CUDA_COURSE_REPO` to
+that checkout.
+
 ## 3. Quickstart
 
-Exercises run against a **cuda-course checkout** (the CLI ships no exercise
-content). Point `--course-root` at one — or set `CUDA_COURSE_REPO`, or run from
-inside a checkout — and grade your `haxpy.cu` solution:
+Use these commands to verify the CLI with code from a cuda-course checkout.
+
+**Custom kernel using a course example.** `examples/part1/saxpy.cu` is
+self-contained and has its own `main()`, so it runs without `--harness` or a
+solution file:
 
 ```bash
-export CUDA_COURSE_REPO=/path/to/cuda-course
-gpu_func_cli exercise 01-haxpy grade --file your_haxpy.cu --gpu B200
-gpu_func_cli exercise 01-haxpy profile benchmarks/01_aligned_small.txt \
-  --file your_haxpy.cu --gpu B200 --artifact-dir ./ncu-artifacts
+export CUDA_COURSE_REPO="set to your cuda-course repo"
+gpu_func_cli custom run "$CUDA_COURSE_REPO/examples/part1/saxpy.cu" --gpu B200
 ```
 
-`your_haxpy.cu` is **your completed solution** — the course starter
-`exercises/01-haxpy/haxpy.cu` is an empty `// TODO` stub that fails `grade`. No
-solution yet? The [walkthrough](#4-hands-on-walkthrough) builds a working one,
-or copy a known-correct `solutions/correct/basic.cu` from the checkout.
+(Any self-contained `.cu` works, and `custom` needs no checkout at all. See
+[Section 6](#6-custom-kernels).)
 
-(`custom` kernels need no checkout — see [Section 6](#6-custom-kernels).)
+**Course exercise smoke check.**
+Exercises run against a **cuda-course checkout** (the CLI ships no exercise
+content). Set `CUDA_COURSE_REPO`, pass `--course-root`, or run from inside a
+checkout. Then run a small correctness test plus the small benchmark:
 
-`grade` runs test + sanitizer + benchmark; `profile` prints exercise-specific
-feedback and saves `haxpy.aligned_small.ncu-rep`. For any other exercise, see
-[Section 5](#5-course-exercises). For your own kernels, [Section 6](#6-custom-kernels).
+```bash
+export CUDA_COURSE_REPO="set to your cuda-course repo"
+gpu_func_cli exercise 01-haxpy test tests/01_corner_n1.txt \
+  --file "$CUDA_COURSE_REPO/exercises/01-haxpy/solutions/correct/basic.cu" --gpu B200
+gpu_func_cli exercise 01-haxpy benchmark benchmarks/01_aligned_small.txt \
+  --file "$CUDA_COURSE_REPO/exercises/01-haxpy/solutions/correct/basic.cu" --gpu B200
+gpu_func_cli exercise 01-haxpy profile benchmarks/01_aligned_small.txt \
+  --file "$CUDA_COURSE_REPO/exercises/01-haxpy/solutions/correct/basic.cu" \
+  --gpu B200 --artifact-dir ./ncu-artifacts
+```
+
+The small `test`/`benchmark` commands are the fastest way to check the remote
+exercise path. `profile` prints exercise-specific feedback and saves
+`haxpy.aligned_small.ncu-rep`. Use full `grade` later; it runs the complete
+test, sanitizer, and benchmark suite, including larger benchmark inputs.
+
+Once you want to test **your own** solution, swap `--file` for it. The course
+starter `exercises/01-haxpy/haxpy.cu` is an empty `// TODO` stub that fails
+these checks; the [walkthrough](#4-hands-on-walkthrough) builds a working one.
+For any other exercise, see [Section 5](#5-course-exercises). For your own
+kernels, [Section 6](#6-custom-kernels).
 
 ## 4. Hands-on walkthrough
 
-A complete copy-paste journey for a fresh install with live GFAAS credentials.
-It creates its own test files, so you do not need to bring a CUDA program.
+This walkthrough creates temporary source files and runs them with live GFAAS
+credentials. You do not need to bring a CUDA program.
 
 ### 4.1 Create the test files
 
@@ -197,7 +220,7 @@ EOF
 
 ### 4.2 Run a custom kernel
 
-Self-contained source — no `--harness`:
+Self-contained source, no `--harness`:
 
 ```bash
 gpu_func_cli custom run     /tmp/gpu-course-demo/vecadd.cu --gpu B200
@@ -220,32 +243,35 @@ Custom run passed
 
 ### 4.3 Run the course exercise
 
-Exercises need a cuda-course checkout — point `CUDA_COURSE_REPO` at one (the
-`haxpy.cu` you wrote above is your solution; `--file` can live anywhere):
+Exercises need a cuda-course checkout. Set `CUDA_COURSE_REPO` first. The
+`haxpy.cu` you wrote above is your solution and `--file` can live anywhere:
 
 ```bash
-export CUDA_COURSE_REPO=/path/to/cuda-course
+export CUDA_COURSE_REPO="set to your cuda-course repo"
 gpu_func_cli exercise 01-haxpy compile --file /tmp/gpu-course-demo/haxpy.cu --gpu B200
-gpu_func_cli exercise 01-haxpy grade   --file /tmp/gpu-course-demo/haxpy.cu --gpu B200
+gpu_func_cli exercise 01-haxpy test tests/01_corner_n1.txt \
+  --file /tmp/gpu-course-demo/haxpy.cu --gpu B200
+gpu_func_cli exercise 01-haxpy benchmark benchmarks/01_aligned_small.txt \
+  --file /tmp/gpu-course-demo/haxpy.cu --gpu B200
 gpu_func_cli exercise 01-haxpy profile benchmarks/01_aligned_small.txt \
   --file /tmp/gpu-course-demo/haxpy.cu --gpu B200 --artifact-dir /tmp/gpu-course-demo/out
 ```
 
-Expected (grade) ends with:
+Expected: the small correctness test passes, the small benchmark prints timing
+and bandwidth for `aligned_small`, and `profile` saves
+`haxpy.aligned_small.ncu-rep`. Run the full suite after this quick path:
 
-```text
-All 7 test(s) passed
-All 7 sanitizer run(s) passed
-All 3 benchmark(s) passed
-Grade passed
+```bash
+gpu_func_cli exercise 01-haxpy grade --file /tmp/gpu-course-demo/haxpy.cu --gpu B200
 ```
 
 ### 4.4 Inspect the reports (needs `ncu_report.py` locally)
 
 ```bash
 gpu_func_cli report summary /tmp/gpu-course-demo/out/vecadd.ncu-rep --per-kernel
+export CUDA_COURSE_REPO="set to your cuda-course repo"
 gpu_func_cli report feedback /tmp/gpu-course-demo/out/haxpy.aligned_small.ncu-rep \
-  --course-dir /path/to/cuda-course \
+  --course-dir "$CUDA_COURSE_REPO" \
   --exercise 01-haxpy --benchmark benchmarks/01_aligned_small.txt
 ```
 
@@ -257,25 +283,29 @@ Actions: `compile`, `test`, `benchmark`, `sanitizer`, `profile`, `grade`
 
 ### Point at a cuda-course checkout
 
-Exercises are **not** vendored — the CLI ships no exercise content. Pass
+Exercises are **not** vendored; the CLI ships no exercise content. Pass
 `--course-root` (or set `CUDA_COURSE_REPO`, or run from inside a checkout) and
 the CLI ships that exercise plus the live course `runner/` and runs the
 exercise's own `run.py`, so output (correctness, GiB/s, feedback) is exact for
 any exercise. The exercise's `solutions/` dir is never uploaded.
 
-`--file` is **your completed solution**. For `01-haxpy` it must provide:
+`--file` is **your completed solution**. Swap in your own once you have one. The
+commands below use the checkout's bundled `solutions/correct/basic.cu` so they
+run as-is. For `01-haxpy` your file must provide:
 
 ```cpp
 void haxpy(int n, float alpha, const nv_bfloat16* d_x, nv_bfloat16* d_y);
 ```
 
 ```bash
-export CUDA_COURSE_REPO=/path/to/cuda-course
+export CUDA_COURSE_REPO="set to your cuda-course repo"
+HAXPY=$CUDA_COURSE_REPO/exercises/01-haxpy/solutions/correct/basic.cu  # or your own .cu
 
-gpu_func_cli exercise 01-haxpy grade --file your_haxpy.cu --gpu B200
-gpu_func_cli exercise 01-haxpy test tests/01_corner_n1.txt --file your_haxpy.cu --gpu B200   # one test
+gpu_func_cli exercise 01-haxpy test tests/01_corner_n1.txt --file "$HAXPY" --gpu B200
+gpu_func_cli exercise 01-haxpy benchmark benchmarks/01_aligned_small.txt --file "$HAXPY" --gpu B200
 gpu_func_cli exercise 01-haxpy profile benchmarks/01_aligned_small.txt \
-  --file your_haxpy.cu --gpu B200 --artifact-dir ./ncu-artifacts
+  --file "$HAXPY" --gpu B200 --artifact-dir ./ncu-artifacts
+gpu_func_cli exercise 01-haxpy grade --file "$HAXPY" --gpu B200   # full suite, slower
 
 gpu_func_cli exercise 02-softmax128 grade \
   --file "$CUDA_COURSE_REPO/exercises/02-softmax128/solutions/correct/02-baseline.cu" --gpu B200
@@ -313,7 +343,7 @@ gpu_func_cli custom profile SOURCE.cu [--harness HARNESS.cu] --gpu B200 --artifa
 
 Not always. `custom` always links a real executable on the worker
 (`nvcc <sources> -o custom_kernel`, then runs `./custom_kernel`), so it needs a
-`main()` — but that `main()` can come from **either** the source or the harness:
+`main()`, but that `main()` can come from **either** the source or the harness:
 
 - **Self-contained source** (already has `main()`, like `vecadd.cu` above): pass
   it alone, no `--harness`.
@@ -337,8 +367,8 @@ nvtxRangePop();
 If neither source nor harness has that range, pass `--no-nvtx-filter` so
 Nsight Compute profiles the whole binary instead of capturing nothing.
 
-> Exercises differ: in `gpu_func_cli exercise …` your source is always
-> kernel-only and the checkout's `tester.cu` is the harness — you never pass
+> Exercises differ: in `gpu_func_cli exercise ...` your source is always
+> kernel-only and the checkout's `tester.cu` is the harness; you never pass
 > `--harness` to `exercise`.
 
 ### Custom options
@@ -352,7 +382,7 @@ Nsight Compute profiles the whole binary instead of capturing nothing.
 | `--ncu-args STR` | Nsight Compute args. Default `--set basic`. Use `--set full` for warp-stall / SASS metrics. |
 | `--nvtx-range NAME` | NVTX range to profile. Default `profile_kernel`. |
 | `--no-nvtx-filter` | Profile the whole executable (no `profile_kernel` range needed). |
-| `--report-name NAME` | Base name for the `.ncu-rep`. Default: source file stem (`vecadd.cu` → `vecadd.ncu-rep`). |
+| `--report-name NAME` | Base name for the `.ncu-rep`. Default: source file stem (`vecadd.cu` to `vecadd.ncu-rep`). |
 | `--output NAME` | Remote executable name. Default `custom_kernel`. |
 | `--gpu` / `--image` / `--arch` / `--timeout` / `--json` / `--artifact-dir` / `--verbose` | As for exercises. |
 
@@ -360,8 +390,9 @@ Nsight Compute profiles the whole binary instead of capturing nothing.
 
 ```bash
 gpu_func_cli report summary  REPORT.ncu-rep [--per-kernel] [--json PATH]
+export CUDA_COURSE_REPO="set to your cuda-course repo"
 gpu_func_cli report feedback REPORT.ncu-rep \
-  --course-dir /path/to/cuda-course --exercise 01-haxpy --benchmark benchmarks/01_aligned_small.txt [--json PATH]
+  --course-dir "$CUDA_COURSE_REPO" --exercise 01-haxpy --benchmark benchmarks/01_aligned_small.txt [--json PATH]
 ```
 
 - **`summary`** parses any `.ncu-rep` and prints duration, DRAM bytes/throughput,
@@ -372,6 +403,9 @@ gpu_func_cli report feedback REPORT.ncu-rep \
   benchmark's `n`). Only meaningful for a report that matches that exercise's
   contract, and the report must be metrics-rich (`--set full`).
 
+Pass `CUDA_COURSE_REPO` to `--course-dir` as shown above. You can also set
+`CUDA_COURSE_DIR` for report commands and omit `--course-dir`.
+
 Both report commands need `ncu_report.py` locally (ships with Nsight Compute, no
 GPU required). If it is missing, the CLI says so; point Python at it:
 
@@ -379,7 +413,7 @@ GPU required). If it is missing, the CLI says so; point Python at it:
 export PYTHONPATH="/opt/nvidia/nsight-compute/<version>/extras/python:$PYTHONPATH"
 ```
 
-For course kernels, prefer `exercise profile` over manual `report feedback` — it
+For course kernels, prefer `exercise profile` over manual `report feedback`; it
 profiles, parses, and applies the rules in one remote job.
 
 ### Metrics the course extracts
@@ -402,7 +436,8 @@ Regenerate a report with `--set full` (charts need PC-sampling / SASS metrics),
 naming it to match what the page expects:
 
 ```bash
-cd /path/to/cuda-course
+export CUDA_COURSE_REPO="set to your cuda-course repo"
+cd "$CUDA_COURSE_REPO"
 
 gpu_func_cli custom profile examples/part1/saxpy.cu --gpu B200 --no-nvtx-filter \
   --ncu-args "--set full" --report-name saxpy --artifact-dir examples/part1/reports
@@ -416,9 +451,9 @@ gpu_func_cli custom profile examples/part4/saxpy-v6.cu --gpu B200 --no-nvtx-filt
 
 Per-page mapping:
 
-| Page (→ dir) | Embedded exercise | Reports it reads |
+| Page (dir) | Embedded exercise | Reports it reads |
 | --- | --- | --- |
-| `01-core-concepts.md` (part1) | — | `saxpy` (warp-stall chart) |
+| `01-core-concepts.md` (part1) | none | `saxpy` (warp-stall chart) |
 | `02-thread-coarsening.md` (part2) | `01-haxpy` | `saxpy-b4000`, `saxpy-b200`, `saxpy-v2-b4000`, `saxpy-v3a-b4000` |
 | `03-warp-shuffles.md` (part3) | `02-softmax128` | none |
 | `04-async-data-movement.md` (part4) | `03-max-pool` | `part2/saxpy-v5-b200`, `saxpy-v6-b200` |
@@ -426,11 +461,12 @@ Per-page mapping:
 ### Rebuild the JSON cache
 
 The site reads a `.json` cache next to each `.ncu-rep`, and it only regenerates
-that cache when it is **missing** — replacing a `.ncu-rep` does not refresh it.
+that cache when it is **missing**; replacing a `.ncu-rep` does not refresh it.
 After (re)generating a report, rebuild its cache:
 
 ```bash
-cd /path/to/cuda-course
+export CUDA_COURSE_REPO="set to your cuda-course repo"
+cd "$CUDA_COURSE_REPO"
 export PYTHONPATH="/opt/nvidia/nsight-compute/<version>/extras/python:src:$PYTHONPATH"
 python -c "from cuda_course import ncu_cache as c; \
 c.generate_report_cache('examples/part1/reports/saxpy.ncu-rep'); print('ok')"
@@ -442,7 +478,7 @@ B200 + Nsight Compute 2025.x do not emit the PC-sampling
 `smsp__pcsamp_warps_issue_stalled_*` metrics even with `--set full`; they emit
 `smsp__average_warps_issue_stalled_<reason>_per_issue_active.ratio` instead.
 `cuda-course`'s `runner/ncu_utils.get_ncu_stall_reasons_from_dict()` falls back
-to those averages, so the chart works on both — just capture with `--set full`.
+to those averages, so the chart works on both. Capture with `--set full`.
 
 ## 9. Command reference
 
@@ -461,11 +497,11 @@ Top-level options (before the subcommand): `--api-base` / `--api-key` (default t
 
 ## 10. What happens internally
 
-For remote commands the CLI: validates local paths → builds a JSON payload →
-embeds it in a small Python worker module → tars and uploads it
-(`POST /v1/bundles`) → submits the job (`POST /v1/submit`) → polls
-(`GET /v1/jobs/<id>`) → fetches the result (`GET /v1/jobs/<id>/result_json`) →
-prints output and writes artifacts/JSON locally when requested.
+For remote commands the CLI validates local paths, builds a JSON payload,
+embeds it in a small Python worker module, uploads it with `POST /v1/bundles`,
+submits the job with `POST /v1/submit`, polls `GET /v1/jobs/<id>`, fetches
+`GET /v1/jobs/<id>/result_json`, then prints output and writes artifacts/JSON
+locally when requested.
 
 On the worker, a custom job runs roughly:
 
@@ -494,19 +530,19 @@ exactly. The CLI bundles no exercise content.
 
 ## 12. Troubleshooting
 
-- **`GFAAS_API_BASE is not set`** — export `GFAAS_API_BASE` and `GFAAS_API_KEY`.
-- **No live workers / `cuda-nvcc` missing** — run `gpu_func_cli workers`; if no
+- **`GFAAS_API_BASE is not set`**: export `GFAAS_API_BASE` and `GFAAS_API_KEY`.
+- **No live workers / `cuda-nvcc` missing**: run `gpu_func_cli workers`; if no
   B200 / `cuda-nvcc` worker appears, the backend is offline/busy or the GFAAS
   operator must prepare the image.
-- **`nvcc`, `ncu`, or `compute-sanitizer` missing** — a worker-image issue; the
+- **`nvcc`, `ncu`, or `compute-sanitizer` missing**: a worker-image issue; the
   local machine never installs CUDA for remote runs.
-- **`ncu_report.py is not available`** — only needed for local `report`
+- **`ncu_report.py is not available`**: only needed for local `report`
   commands; set `PYTHONPATH` to Nsight Compute's `extras/python` (see Section 7).
-- **Profile is slow** — `--set full` replays the kernel once per metric pass;
+- **Profile is slow**: `--set full` replays the kernel once per metric pass;
   that's expected. Course `profile` uses `--set=full` for feedback metrics.
-- **An exercise won't start** — exercises need a cuda-course checkout; pass
+- **An exercise won't start**: exercises need a cuda-course checkout; pass
   `--course-root <cuda-course>`, set `CUDA_COURSE_REPO`, or run from inside a
   checkout. See Section 5.
-- **`report feedback` gives odd advice** — use it only for a report matching the
+- **`report feedback` gives odd advice**: use it only for a report matching the
   selected exercise + benchmark; for arbitrary kernels use `report summary`.
-- **Warp-stall chart empty on B200** — capture with `--set full`; see Section 8.
+- **Warp-stall chart empty on B200**: capture with `--set full`; see Section 8.

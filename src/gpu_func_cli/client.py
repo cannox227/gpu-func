@@ -110,6 +110,11 @@ class RestClient:
                     time.sleep(min(0.25 * (2**attempt), 1.0))
                     continue
                 raise CliError(f"request failed for {method} {path}: {exc}") from exc
+            except _RETRYABLE_TRANSPORT_ERRORS as exc:
+                if attempt + 1 < attempts:
+                    time.sleep(min(0.25 * (2**attempt), 1.0))
+                    continue
+                raise CliError(f"request failed for {method} {path}: {exc}") from exc
         try:
             return json.loads(body.decode("utf-8"))
         except json.JSONDecodeError as exc:
@@ -121,4 +126,4 @@ def _is_retryable_transport_error(exc: urllib.error.URLError) -> bool:
     if isinstance(reason, _RETRYABLE_TRANSPORT_ERRORS):
         return True
     message = str(reason).lower()
-    return "connection reset" in message or "remote end closed connection" in message
+    return "connection reset" in message or "remote end closed connection" in message or "timed out" in message

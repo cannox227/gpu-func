@@ -78,8 +78,8 @@ def _cmd_exercise(args: argparse.Namespace) -> int:
             "Pass --course-root <cuda-course>, set CUDA_COURSE_REPO, or run from "
             "inside a checkout."
         )
-    gpu_type, _arch = _resolve_gpu(args.gpu, args.gpu_type, args.arch)
-    return _run_checkout_exercise(args, client, course_root, gpu_type)
+    gpu_type, arch = _resolve_gpu(args.gpu, args.gpu_type, args.arch)
+    return _run_checkout_exercise(args, client, course_root, gpu_type, arch)
 
 
 def _submit_payload(
@@ -140,7 +140,7 @@ def _submit_payload(
     return result, job_id
 
 
-def _run_checkout_exercise(args: argparse.Namespace, client, course_root: Path, gpu_type: str) -> int:
+def _run_checkout_exercise(args: argparse.Namespace, client, course_root: Path, gpu_type: str, arch: str) -> int:
     # Branch A: ship the live cuda-course runner/ + the chosen exercise and run
     # that exercise's own run.py on the worker (exact output, any exercise).
     mode = args.exercise_command
@@ -152,11 +152,12 @@ def _run_checkout_exercise(args: argparse.Namespace, client, course_root: Path, 
         specs=list(args.specs),
         gpu=args.gpu,
         gpu_type=gpu_type,
+        arch=arch,
         image=args.image,
         timeout_s=args.timeout,
         verbose=args.verbose,
     )
-    result, job_id = _submit_payload(client, args, payload, gpu_type, "cuda-course", mode)
+    result, job_id = _submit_payload(client, args, payload, gpu_type, "cuda-course", mode, arch=arch or "default")
     if result is None:
         return RC_SETUP
     code = _print_course_runner_result(result, args)
@@ -168,6 +169,7 @@ def _run_checkout_exercise(args: argparse.Namespace, client, course_root: Path, 
                 "job_id": job_id,
                 "gpu": payload["remote"]["gpu"],
                 "gpu_type": payload["remote"]["gpu_type"],
+                "arch": payload["remote"].get("arch"),
                 "image": payload["remote"]["image"],
             },
             "status": result.get("status"),

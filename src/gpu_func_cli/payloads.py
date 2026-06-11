@@ -82,6 +82,7 @@ def _build_checkout_payload(
     specs: list[str],
     gpu: str,
     gpu_type: str,
+    arch: str,
     image: str,
     timeout_s: int,
     verbose: bool,
@@ -130,6 +131,8 @@ def _build_checkout_payload(
         command += ["--file", file_arg]
     if verbose:
         command.append("-v")
+    if arch:
+        command += ["--arch", arch]
     command.append(mode)
     command.extend(_norm_spec(s, exercise_id) for s in specs)
 
@@ -137,7 +140,7 @@ def _build_checkout_payload(
         "schema_version": 1,
         "asset_version": "checkout",
         "target": {"kind": "exercise", "exercise_id": exercise_id, "source": "checkout"},
-        "remote": {"gpu": gpu, "gpu_type": gpu_type, "image": image, "timeout_s": timeout_s},
+        "remote": {"gpu": gpu, "gpu_type": gpu_type, "arch": arch, "image": image, "timeout_s": timeout_s},
         "command": {"mode": mode},
         "course_runner": {
             "enabled": True,

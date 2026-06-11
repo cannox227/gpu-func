@@ -91,6 +91,52 @@ class ClientTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
 
+    def test_get_retries_bare_read_timeout(self):
+        calls = []
+
+        def fake_urlopen(req, timeout):
+            calls.append(req.full_url)
+            if len(calls) == 1:
+                raise TimeoutError("The read operation timed out")
+            return FakeResponse(b'{"status": "completed"}')
+
+        client = RestClient(api_base="https://example.test/api", api_key=None, request_timeout=3, poll_interval=0)
+        with mock.patch.object(urllib.request, "urlopen", fake_urlopen):
+            result = client.get_json("/v1/jobs/job-1")
+
+        self.assertEqual(result, {"status": "completed"})
+        self.assertEqual(len(calls), 2)
+
+    def test_get_retries_wrapped_timeout_message(self):
+        calls = []
+
+        def fake_urlopen(req, timeout):
+            calls.append(req.full_url)
+            if len(calls) == 1:
+                raise urllib.error.URLError("timed out")
+            return FakeResponse(b'{"status": "completed"}')
+
+        client = RestClient(api_base="https://example.test/api", api_key=None, request_timeout=3, poll_interval=0)
+        with mock.patch.object(urllib.request, "urlopen", fake_urlopen):
+            result = client.get_json("/v1/jobs/job-1")
+
+        self.assertEqual(result, {"status": "completed"})
+        self.assertEqual(len(calls), 2)
+
+    def test_submit_wraps_bare_read_timeout_without_retry(self):
+        calls = []
+
+        def fake_urlopen(req, timeout):
+            calls.append(req.full_url)
+            raise TimeoutError("The read operation timed out")
+
+        client = RestClient(api_base="https://example.test/api", api_key=None, request_timeout=3, poll_interval=0)
+        with mock.patch.object(urllib.request, "urlopen", fake_urlopen):
+            with self.assertRaisesRegex(CliError, "read operation timed out"):
+                client.post_json("/v1/submit", {"bundle_id": "bundle-1"})
+
+        self.assertEqual(len(calls), 1)
+
     def test_wait_job_timeout_uses_cli_timeout_exit_code(self):
         client = RestClient(api_base="https://example.test/api", api_key=None, request_timeout=3, poll_interval=0)
         with mock.patch.object(client, "get_json", return_value={"status": "queued"}):
