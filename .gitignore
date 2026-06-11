@@ -1,0 +1,15 @@
+docs-archive/
+.agents
+.codex
+.venv
+build/
+*.egg-info/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.bak
+*.tmp       
+flow.md

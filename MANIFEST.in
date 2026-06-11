@@ -1,0 +1,2 @@
+recursive-include src/gpu_func_cli/assets *
+global-exclude *.py[cod]
