@@ -155,6 +155,95 @@ def _build_checkout_payload(
     }
 
 
+def _build_flat_exercise_payload(
+    *,
+    exercise_dir: Path,
+    exercise_id: str,
+    mode: str,
+    source_file: Path | None,
+    specs: list[str],
+    gpu: str,
+    gpu_type: str,
+    arch: str,
+    image: str,
+    timeout_s: int,
+    verbose: bool,
+) -> dict[str, Any]:
+    """Build a course-runner job from a *flat* exercise dir (``run.py`` and
+    ``runner/`` as siblings, e.g. an unzipped exercise) instead of a cuda-course
+    checkout.
+
+    ``runner/`` is shipped at the payload root so the worker's
+    ``PYTHONPATH=workdir`` imports it; the whole exercise (its own ``runner/``
+    included) is shipped under ``exercises/<id>/`` and run from there, so
+    ``run.py``'s ``base_dir/runner/include`` include path resolves -- the same
+    shape the checkout path produces, with no relocation of the source files."""
+    runner_dir = exercise_dir / "runner"
+    if not (exercise_dir / "run.py").is_file():
+        raise CliError(f"no run.py under {exercise_dir}")
+    if not (runner_dir / "cli.py").is_file():
+        raise CliError(f"no runner/cli.py under {exercise_dir}")
+
+    files: dict[str, str] = {}
+    hashes: dict[str, str] = {}
+    # runner/ at the payload root -> importable via the worker's PYTHONPATH=workdir.
+    _walk_checkout(files, hashes, exercise_dir, runner_dir)
+
+    # The whole exercise (its own runner/, incl. include/, comes along) under
+    # exercises/<id>/, which becomes run.py's cwd and base_dir.
+    sub = f"exercises/{exercise_id}"
+    sub_files: dict[str, str] = {}
+    sub_hashes: dict[str, str] = {}
+    _walk_checkout(sub_files, sub_hashes, exercise_dir, exercise_dir, extra_skip={"solutions"})
+    for key, text in sub_files.items():
+        rel = _clean_payload_path(f"{sub}/{key}")
+        files[rel] = text
+        hashes[rel] = sub_hashes[key]
+
+    file_arg: str | None = None
+    if source_file is not None:
+        if not source_file.is_file():
+            raise CliError(f"--file not found: {source_file}")
+        data = source_file.read_bytes()
+        abs_src = source_file.resolve()
+        try:
+            file_arg = abs_src.relative_to(exercise_dir.resolve()).as_posix()
+        except ValueError:
+            file_arg = "__submitted__.cu"
+        rel = _clean_payload_path(f"{sub}/{file_arg}")
+        files[rel] = data.decode("utf-8")
+        hashes[rel] = hashlib.sha256(data).hexdigest()
+
+    json_out = "_gpu_func_cli.json"
+    command = ["python3", "run.py", "--json", json_out]
+    if file_arg:
+        command += ["--file", file_arg]
+    if verbose:
+        command.append("-v")
+    if arch:
+        command += ["--arch", arch]
+    command.append(mode)
+    command.extend(s.replace("\\", "/") for s in specs)
+
+    return {
+        "schema_version": 1,
+        "asset_version": "flat",
+        "target": {"kind": "exercise", "exercise_id": exercise_id, "source": "flat"},
+        "remote": {"gpu": gpu, "gpu_type": gpu_type, "arch": arch, "image": image, "timeout_s": timeout_s},
+        "command": {"mode": mode},
+        "course_runner": {
+            "enabled": True,
+            "cwd": sub,
+            "command": command,
+            "json_out": json_out,
+            "artifact_globs": [json_out, "*.ncu-rep"],
+            "timeout_s": timeout_s,
+        },
+        "files": files,
+        "hashes": hashes,
+    }
+
+
 def _resolve_gpu(gpu: str, gpu_type: str | None, arch: str | None) -> tuple[str, str]:
     """Resolve a GPU label to ``(gpu_type, arch)`` via GPU_DEFAULTS, honouring overrides."""
     default_type, default_arch = GPU_DEFAULTS.get(gpu.upper(), (gpu.lower(), ""))

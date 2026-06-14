@@ -5,10 +5,10 @@ from __future__ import annotations
 import sys
 
 from .client import RestClient
-from .commands import _cmd_custom, _cmd_exercise, _cmd_workers
+from .commands import _cmd_custom, _cmd_exercise, _cmd_exercise_mode, _cmd_workers
 from .constants import RC_SETUP
 from .errors import CliError
-from .parser import build_parser as _build_parser
+from .parser import EXERCISE_MODES, build_parser as _build_parser
 from .reports import _cmd_report
 
 
@@ -35,6 +35,8 @@ def _main(argv: list[str] | None = None) -> int:
         return _cmd_workers(client)                # read-only: list live workers
     if args.command_name == "exercise":
         return _cmd_exercise(args)                 # course exercise (vendored or --course-root)
+    if args.command_name in EXERCISE_MODES:
+        return _cmd_exercise_mode(args)            # top-level shortcut: cwd-detected exercise
     if args.command_name == "custom":
         return _cmd_custom(args)                   # arbitrary kernel (+ optional harness)
     if args.command_name == "report":

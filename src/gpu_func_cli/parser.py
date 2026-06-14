@@ -5,6 +5,51 @@ from __future__ import annotations
 import argparse
 import os
 
+# The exercise actions, usable both as `exercise <id> <mode>` and as a
+# top-level `gpu_func_cli <mode>` that auto-detects the exercise from the cwd.
+EXERCISE_MODES = ["compile", "test", "benchmark", "sanitizer", "profile", "grade"]
+
+
+def _add_common_exercise_opts(p: argparse.ArgumentParser) -> None:
+    """Options shared by `exercise` and every top-level mode command.
+
+    Kept identical between the two surfaces so they behave the same; the only
+    difference is how the exercise is located (positional id vs. cwd auto-detect).
+    """
+    p.add_argument("specs", nargs="*")
+    p.add_argument("--file", dest="source_file")
+    p.add_argument(
+        "--course-root",
+        default=os.environ.get("CUDA_COURSE_REPO"),
+        help="path to a cuda-course checkout (or set CUDA_COURSE_REPO). "
+        "Default: auto-detect from --file / the cwd.",
+    )
+    p.add_argument(
+        "--exercise-dir",
+        help="path to a flat exercise dir (run.py + runner/ side by side, e.g. an "
+        "unzipped exercise). Runs it directly, bypassing the cuda-course layout.",
+    )
+    p.add_argument("--gpu", default="B200")
+    p.add_argument("--gpu-type")
+    p.add_argument("--image", default="cuda-nvcc")
+    p.add_argument("--arch")
+    p.add_argument(
+        "--timeout",
+        type=int,
+        default=600,
+        help="wall-clock budget (seconds) for the WHOLE remote run -- compile plus "
+        "every test/benchmark/profile run together. Separate from the per-spec "
+        "`timeout=` inside each benchmark/test file, which bounds a single binary "
+        "run. Default: 600.",
+    )
+    p.add_argument("--wait-timeout", type=float)
+    p.add_argument("--json", dest="json_path")
+    p.add_argument("--artifact-dir")
+    p.add_argument("--ncu-args", default="--set basic")
+    p.add_argument("--verbose", action="store_true")
+    p.add_argument("--report-max-mismatches", type=int, default=20)
+    p.add_argument("--keep-going", action="store_true")
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="gpu_func_cli")
@@ -19,30 +64,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     exercise = sub.add_parser("exercise", help="Run a course exercise action")
     exercise.add_argument("exercise_id")
-    exercise.add_argument(
-        "exercise_command",
-        choices=["compile", "test", "benchmark", "sanitizer", "profile", "grade"],
-    )
-    exercise.add_argument("specs", nargs="*")
-    exercise.add_argument("--file", dest="source_file")
-    exercise.add_argument(
-        "--course-root",
-        default=os.environ.get("CUDA_COURSE_REPO"),
-        help="path to a cuda-course checkout (or set CUDA_COURSE_REPO); required "
-        "for exercises. Default: auto-detect from --file / the cwd.",
-    )
-    exercise.add_argument("--gpu", default="B200")
-    exercise.add_argument("--gpu-type")
-    exercise.add_argument("--image", default="cuda-nvcc")
-    exercise.add_argument("--arch")
-    exercise.add_argument("--timeout", type=int, default=600)
-    exercise.add_argument("--wait-timeout", type=float)
-    exercise.add_argument("--json", dest="json_path")
-    exercise.add_argument("--artifact-dir")
-    exercise.add_argument("--ncu-args", default="--set basic")
-    exercise.add_argument("--verbose", action="store_true")
-    exercise.add_argument("--report-max-mismatches", type=int, default=20)
-    exercise.add_argument("--keep-going", action="store_true")
+    exercise.add_argument("exercise_command", choices=EXERCISE_MODES)
+    _add_common_exercise_opts(exercise)
+
+    # Top-level shortcuts: `gpu_func_cli benchmark [specs...]` auto-detects the
+    # exercise from the cwd (an unzipped exercise: run.py + runner/ siblings), so
+    # the `exercise <id>` prefix and `--exercise-dir` become optional. Passing
+    # --exercise-dir still works from anywhere. With no specs, the runner runs
+    # every test/benchmark for that mode.
+    for mode in EXERCISE_MODES:
+        mp = sub.add_parser(
+            mode,
+            help=f"Run the {mode} action on the exercise in the cwd "
+            "(or --exercise-dir)",
+        )
+        mp.add_argument(
+            "--exercise-id",
+            help="exercise id for reporting (default: the exercise dir name)",
+        )
+        _add_common_exercise_opts(mp)
+        mp.set_defaults(exercise_command=mode)
 
     custom = sub.add_parser("custom", help="Compile, run, or profile a custom CUDA program")
     custom.add_argument("custom_command", choices=["compile", "run", "profile"])
