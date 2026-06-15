@@ -38,16 +38,17 @@ def find_ncu_python_path():
     found_paths.sort(reverse=True)
     return found_paths[0]
 
-# Add NCU Python path to sys.path
+# Add NCU Python path to sys.path (if found at a well-known install location).
+# This is best-effort: if it isn't found, ncu_report may still be importable via
+# PYTHONPATH (e.g. the Nsight Compute.app bundle on macOS), so we always attempt
+# the import below regardless of whether the glob matched.
 ncu_path = find_ncu_python_path()
-if ncu_path:
-    if ncu_path not in sys.path:
-        sys.path.append(ncu_path)
-    try:
-        import ncu_report
-    except ImportError:
-        ncu_report = None
-else:
+if ncu_path and ncu_path not in sys.path:
+    sys.path.append(ncu_path)
+
+try:
+    import ncu_report
+except ImportError:
     ncu_report = None
 
 
