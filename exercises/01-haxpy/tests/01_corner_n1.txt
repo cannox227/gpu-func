@@ -1,0 +1,10 @@
+# Corner: single element
+name        = corner_n1
+timeout     = 1
+n           = 1
+alpha       = 3.5
+x_dist      = constant 1.0
+y_dist      = constant 2.0
+x_offset    = 0
+y_offset    = 0
+seed        = 3

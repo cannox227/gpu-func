@@ -1,0 +1,22 @@
+# Subnormal alpha precision test.
+#
+# alpha is a float32 subnormal (~1e-40).  BF16 has the same exponent range
+# as float32 but only 7 mantissa bits, so its subnormals are much coarser:
+# any float32 subnormal smaller than ~1.175e-38 * 2^(-7) ≈ 9.2e-41 flushes
+# to zero in BF16.  A buggy kernel that converts alpha to BF16 first gets
+# zero for the whole product.
+#
+# x is chosen so that  alpha * x  lands well inside the normal BF16 range
+# (around 1e-10), making the expected result clearly non-zero and precisely
+# representable.
+#
+# y = 0 so the result is purely alpha*x — no masking by a large y.
+name        = subnormal_alpha
+timeout     = 2
+n           = 100003         # prime, stresses tail handling too
+alpha       = 1.0e-40        # float32 subnormal; zero in BF16
+x_dist      = uniform 1e28 1e30
+y_dist      = constant 0.0
+x_offset    = 0
+y_offset    = 0
+seed        = 8

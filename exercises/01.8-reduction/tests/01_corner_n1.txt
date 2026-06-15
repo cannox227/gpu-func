@@ -1,0 +1,6 @@
+# Corner: a single element
+name        = corner_n1
+timeout     = 1
+n           = 1
+dist        = constant 5.0
+seed        = 3

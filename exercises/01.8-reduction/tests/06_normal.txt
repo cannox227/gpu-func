@@ -1,0 +1,6 @@
+# Normally distributed values (mean 0, stddev 1)
+name        = normal
+timeout     = 2
+n           = 524288         # 2^19
+dist        = normal 0.0 1.0
+seed        = 7

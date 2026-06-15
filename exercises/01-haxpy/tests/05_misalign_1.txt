@@ -1,0 +1,11 @@
+# Misalignment: x/y pointer offset by 1 BF16 element (2 bytes).
+# A vectorised prologue/epilogue is required to handle the unaligned head.
+name        = misalign_1
+timeout     = 2
+n           = 65536
+alpha       = 2.0
+x_dist      = uniform -1.0 1.0
+y_dist      = uniform -1.0 1.0
+x_offset    = 1
+y_offset    = 1
+seed        = 6

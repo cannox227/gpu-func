@@ -1,0 +1,10 @@
+# Easy: power-of-two n, y=0 (tests that y accumulation doesn't corrupt)
+name        = easy_pow2_y0
+timeout     = 2
+n           = 2097152       # 2^21
+alpha       = 2.0
+x_dist      = uniform -1.0 1.0
+y_dist      = constant 0.0
+x_offset    = 0
+y_offset    = 0
+seed        = 2

@@ -1,0 +1,6 @@
+# Mixed signs: the sum nearly cancels, so the tolerance leans on the L1 norm
+name        = negatives
+timeout     = 2
+n           = 262144         # 2^18
+dist        = uniform -1.0 1.0
+seed        = 6

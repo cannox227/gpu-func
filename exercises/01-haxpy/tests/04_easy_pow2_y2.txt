@@ -1,0 +1,10 @@
+# Easy: power-of-two n, standard values
+name        = easy_pow2_y2
+timeout     = 2
+n           = 1048576       # 2^20
+alpha       = 2.0
+x_dist      = uniform -1.0 1.0
+y_dist      = constant 2.0
+x_offset    = 0
+y_offset    = 0
+seed        = 1

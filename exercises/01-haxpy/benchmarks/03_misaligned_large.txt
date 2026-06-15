@@ -1,0 +1,9 @@
+name        = misaligned_large
+timeout     = 600
+n           = 1000000000
+alpha       = 1.5
+x_dist      = uniform -1.0 1.0
+y_dist      = uniform -1.0 1.0
+x_offset    = 3
+y_offset    = 3
+seed        = 3

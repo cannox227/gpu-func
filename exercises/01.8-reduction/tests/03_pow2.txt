@@ -1,0 +1,6 @@
+# Easy: power-of-two n, all ones (exact sum = n, validates in fp32 and fp64)
+name        = pow2
+timeout     = 2
+n           = 1048576        # 2^20
+dist        = constant 1.0
+seed        = 2

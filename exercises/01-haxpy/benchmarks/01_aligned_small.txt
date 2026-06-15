@@ -1,0 +1,9 @@
+name        = aligned_small
+timeout     = 10
+n           = 128000
+alpha       = 3.5
+x_dist      = constant 1.0
+y_dist      = constant 2.0
+x_offset    = 0
+y_offset    = 0
+seed        = 3

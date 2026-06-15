@@ -1,0 +1,6 @@
+# Prime n (stresses non-power-of-two block coverage and the tail)
+name        = nonpow2
+timeout     = 3
+n           = 1000003        # prime
+dist        = uniform 0.0 1.0
+seed        = 4

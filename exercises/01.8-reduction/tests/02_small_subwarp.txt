@@ -1,0 +1,6 @@
+# Corner: fewer elements than a warp (stresses the tail / identity padding)
+name        = small_subwarp
+timeout     = 1
+n           = 17
+dist        = uniform 0.0 1.0
+seed        = 5

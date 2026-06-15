@@ -1,0 +1,5 @@
+name        = large
+timeout     = 120
+n           = 268435456      # 2^28, 1 GiB of float32
+dist        = constant 1.0
+seed        = 3

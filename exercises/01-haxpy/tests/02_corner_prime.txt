@@ -1,0 +1,10 @@
+# Corner: prime n > 10000 (stresses non-power-of-two block coverage)
+name        = corner_prime
+timeout     = 2
+n           = 100003         # prime
+alpha       = 1.5
+x_dist      = uniform -2.0 2.0
+y_dist      = uniform -1.0 1.0
+x_offset    = 0
+y_offset    = 0
+seed        = 4

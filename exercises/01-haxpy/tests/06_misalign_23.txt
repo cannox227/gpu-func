@@ -1,0 +1,12 @@
+# Misalignment: x offset by 23 elements
+#               y offset by 23 element.
+# Tests that both prologue and epilogue handle independent misalignments.
+name        = misalign_23
+timeout     = 2
+n           = 65537          # also non-power-of-two
+alpha       = 2.0
+x_dist      = uniform -1.0 1.0
+y_dist      = uniform -1.0 1.0
+x_offset    = 23
+y_offset    = 23
+seed        = 7

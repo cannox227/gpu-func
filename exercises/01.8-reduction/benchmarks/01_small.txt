@@ -1,0 +1,5 @@
+name        = small
+timeout     = 10
+n           = 1048576        # 2^20
+dist        = constant 1.0
+seed        = 3
